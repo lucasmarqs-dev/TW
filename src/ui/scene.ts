@@ -2,7 +2,8 @@
 // praça central com poço/estátua, caminhos de terra, muralha que evolui de paliçada para pedra,
 // mina nas rochas, poço de argila, serraria, campos da fazenda e edifícios com selo de nível.
 import { BUILDINGS, type BuildingId } from '../data/buildings';
-import type { Village } from '../engine/types';
+import type { Player, Village } from '../engine/types';
+import { buildingSpriteUrl, spriteTier } from './buildingSprites';
 
 const W = 1000, H = 640;
 let NIGHT = false;
@@ -116,25 +117,57 @@ function badge(x: number, y: number, level: number, building: boolean): string {
 
 // Posições dos edifícios na cena (x, y = base da construção; bx, by = selo)
 const POS: Record<BuildingId, { x: number; y: number }> = {
-  main: { x: 575, y: 215 },
-  barracks: { x: 300, y: 270 },
-  stable: { x: 285, y: 405 },
-  garage: { x: 610, y: 490 },
-  smith: { x: 440, y: 490 },
-  church: { x: 740, y: 280 },
-  church_f: { x: 740, y: 280 },
-  watchtower: { x: 345, y: 185 },
-  snob: { x: 700, y: 400 },
-  place: { x: 560, y: 345 },
-  statue: { x: 475, y: 385 },
-  market: { x: 470, y: 290 },
-  storage: { x: 415, y: 215 },
-  hide: { x: 470, y: 132 },
-  farm: { x: 860, y: 120 },
-  wood: { x: 860, y: 560 },
-  stone: { x: 130, y: 555 },
-  iron: { x: 140, y: 95 },
+  main: { x: 560, y: 225 },
+  barracks: { x: 265, y: 305 },
+  stable: { x: 295, y: 445 },
+  garage: { x: 615, y: 505 },
+  smith: { x: 450, y: 505 },
+  church: { x: 770, y: 305 },
+  church_f: { x: 770, y: 305 },
+  watchtower: { x: 200, y: 395 },
+  snob: { x: 735, y: 450 },
+  place: { x: 600, y: 385 },
+  statue: { x: 470, y: 420 },
+  market: { x: 480, y: 318 },
+  storage: { x: 385, y: 240 },
+  hide: { x: 285, y: 170 },
+  farm: { x: 880, y: 150 },
+  wood: { x: 880, y: 600 },
+  stone: { x: 130, y: 610 },
+  iron: { x: 120, y: 120 },
   wall: { x: 170, y: 330 },
+};
+
+/** Largura (unidades da cena) de cada sprite ilustrado; a base da imagem fica em POS.y. */
+const SPRITE_W: Partial<Record<BuildingId, number>> = {
+  main: 215, barracks: 165, stable: 185, garage: 150, smith: 140, church: 110, church_f: 110, watchtower: 82,
+  snob: 150, place: 130, statue: 62, market: 165, storage: 150, hide: 125, farm: 200, wood: 175, stone: 190, iron: 200,
+};
+const SPRITE_RATIO: Record<string, number> = {};
+function spriteImage(id: BuildingId, lvl: number, v: Village, owner: { knight: { status: string } } | null): { svg: string; h: number } | null {
+  const url = buildingSpriteUrl(id, lvl, BUILDINGS[id].max, id === 'statue' && owner?.knight.status === 'alive' ? 'ativo' : undefined);
+  const w = SPRITE_W[id];
+  if (!url || !w) return null;
+  const ratio = SPRITE_RATIO[url] ?? spriteRatio(url);
+  const h = w * ratio;
+  const p = POS[id];
+  void v;
+  return {
+    h,
+    svg: `<ellipse cx="${p.x + w * 0.05}" cy="${p.y - h * 0.08}" rx="${w * 0.42}" ry="${h * 0.12}" fill="rgba(0,0,0,.18)"/>` +
+      `<image href="${url}" x="${p.x - w / 2}" y="${p.y - h}" width="${w}" height="${h}" preserveAspectRatio="xMidYMax meet"/>`,
+  };
+}
+/** Proporções dos sprites processados (altura/largura); padrão 0,68. */
+function spriteRatio(url: string): number {
+  for (const [k, r] of Object.entries(RATIOS)) if (url.includes(k)) return (SPRITE_RATIO[url] = r);
+  return (SPRITE_RATIO[url] = 0.68);
+}
+const RATIOS: Record<string, number> = {
+  'academia': 314 / 380, 'armazem': 248 / 380, 'esconderijo': 277 / 380, 'estabulo': 249 / 380, 'estatua': 305 / 380,
+  'fazenda': 270 / 380, 'ferreiro': 262 / 380, 'igreja': 331 / 380, 'mercado': 255 / 380, 'mina-de-ferro': 248 / 380,
+  'oficina': 253 / 380, 'poco-de-argila': 251 / 380, 'ponto-de-encontro': 270 / 380, 'quartel-general': 267 / 380,
+  'quartel-tier': 254 / 380, 'serraria': 253 / 380, 'torre-de-vigia': 377 / 380, 'muralha': 742 / 1100,
 };
 
 function drawBuilding(id: BuildingId, lvl: number, v: Village): string {
@@ -272,7 +305,7 @@ const PATHS: [number, number, number, number][] = [
   [CX, CY, 740, 290], [CX, CY, 700, 410], [CX, CY, 140, 110], [CX, CY, 860, 140], [CX, CY, 860, 565], [CX, CY, 130, 560],
 ];
 
-export function villageScene(v: Village, underConstruction: Set<string>, night = false, motion = true): string {
+export function villageScene(v: Village, underConstruction: Set<string>, night = false, motion = true, owner: Player | null = null): string {
   NIGHT = night;
   let s = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" font-family="Verdana">`;
   s += `<defs><radialGradient id="grass" cx="50%" cy="50%" r="70%"><stop offset="0" stop-color="#7fae48"/><stop offset="1" stop-color="#557f2c"/></radialGradient>` +
@@ -300,7 +333,7 @@ export function villageScene(v: Village, underConstruction: Set<string>, night =
   // praça
   s += `<ellipse cx="${CX}" cy="${CY + 22}" rx="190" ry="119" fill="#b39564" opacity=".6"/><ellipse cx="${CX}" cy="${CY + 20}" rx="185" ry="115" fill="url(#sand)"/><ellipse cx="${CX}" cy="${CY + 20}" rx="185" ry="115" filter="url(#f-dirt)" opacity=".6"/>`;
   // poço se não houver estátua
-  if (!v.buildings.statue) s += `<ellipse cx="475" cy="385" rx="18" ry="8" fill="#6b6259" stroke="#3b2a14"/><ellipse cx="475" cy="383" rx="12" ry="5" fill="#2a3b4f"/>`;
+  if (!v.buildings.statue) s += `<ellipse cx="470" cy="410" rx="18" ry="8" fill="#6b6259" stroke="#3b2a14"/><ellipse cx="470" cy="408" rx="12" ry="5" fill="#2a3b4f"/>`;
   // árvores externas
   const trees: [number, number, number][] = [];
   for (let i = 0; i < 46; i++) {
@@ -314,7 +347,16 @@ export function villageScene(v: Village, underConstruction: Set<string>, night =
   trees.sort((a, b) => a[1] - b[1]);
   // Desenho ordenado por profundidade
   const layers: { y: number; svg: string }[] = trees.map(([x, y, sz]) => ({ y, svg: tree(x, y, sz, rnd()) }));
-  layers.push({ y: 1, svg: wallRing(v.buildings.wall) });
+  const wallUrl = v.buildings.wall > 0 ? buildingSpriteUrl('wall', v.buildings.wall, 20) : null;
+  if (wallUrl) {
+    const ww = 800, wh = ww * RATIOS.muralha;
+    // Metade de trás atrás de tudo; metade da frente por cima dos edifícios internos.
+    const img = `<image href="${wallUrl}" x="${CX - ww / 2}" y="${CY + 25 - wh / 2}" width="${ww}" height="${wh}"/>`;
+    const cut = CY + 25;
+    layers.push({ y: 1, svg: `<clipPath id="wall-back"><rect x="0" y="0" width="${W}" height="${cut}"/></clipPath><g clip-path="url(#wall-back)">${img}</g>` });
+    layers.push({ y: 565, svg: `<clipPath id="wall-front"><rect x="0" y="${cut}" width="${W}" height="${H}"/></clipPath><g clip-path="url(#wall-front)" pointer-events="none">${img}</g>` });
+  } else layers.push({ y: 1, svg: wallRing(v.buildings.wall) });
+  void spriteTier;
   const ids = Object.keys(POS) as BuildingId[];
   const badges: string[] = [];
   for (const id of ids) {
@@ -326,20 +368,21 @@ export function villageScene(v: Village, underConstruction: Set<string>, night =
       if (!v.buildings.church && v.buildings.church_f) { lvl = v.buildings.church_f; label = BUILDINGS.church_f.name; target = 'church_f'; }
     }
     const p = POS[id];
-    const inner = lvl > 0 ? drawBuilding(id, lvl, v) : `<ellipse cx="${p.x}" cy="${p.y}" rx="26" ry="11" fill="rgba(90,60,20,.25)" stroke="rgba(60,40,10,.5)" stroke-dasharray="4 3"/>`;
+    const sprite = lvl > 0 ? spriteImage(target, lvl, v, owner) : null;
+    const inner = lvl <= 0 ? `<ellipse cx="${p.x}" cy="${p.y - 8}" rx="30" ry="12" fill="rgba(90,60,20,.25)" stroke="rgba(60,40,10,.5)" stroke-dasharray="4 3"/>` : sprite ? sprite.svg : drawBuilding(id, lvl, v);
     const building = underConstruction.has(id);
-    const lblY = p.y - (id === 'main' ? 110 : 70);
-    if (lvl > 0 || building) badges.push(`<g class="bld" data-act="open-building" data-b="${target}">${badge(p.x + (id === 'farm' ? -50 : 0), p.y + 22, lvl, building)}</g>`);
+    const lblY = p.y - (sprite ? sprite.h + 6 : id === 'main' ? 110 : 70);
+    if (lvl > 0 || building) badges.push(`<g class="bld" data-act="open-building" data-b="${target}">${badge(p.x, p.y + 4, lvl, building)}</g>`);
     layers.push({
       y: p.y,
       svg: `<g class="bld" data-act="open-building" data-b="${target}"><g class="shape">${inner}</g>` +
         `<g class="lbl"><rect x="${p.x - label.length * 3.8 - 6}" y="${lblY - 13}" width="${label.length * 7.6 + 12}" height="19" rx="4" fill="rgba(30,20,8,.85)"/><text x="${p.x}" y="${lblY + 1}" text-anchor="middle" font-size="12" fill="#ffe6a8">${label}${lvl ? ' (' + lvl + ')' : ''}</text></g>` +
-        `<rect x="${p.x - 55}" y="${p.y - 70}" width="110" height="90" fill="transparent"/></g>`,
+        `<rect x="${p.x - (SPRITE_W[id] ?? 110) * 0.4}" y="${p.y - (sprite ? sprite.h * 0.85 : 70)}" width="${(SPRITE_W[id] ?? 110) * 0.8}" height="${sprite ? sprite.h * 0.85 : 90}" fill="transparent"/></g>`,
     });
   }
   // Selo da muralha
   if (v.buildings.wall > 0 || underConstruction.has('wall')) {
-    layers.push({ y: 999, svg: `<g class="bld" data-act="open-building" data-b="wall">${badge(140, 330, v.buildings.wall, underConstruction.has('wall'))}<g class="lbl"><text x="140" y="305" text-anchor="middle" font-size="12" fill="#ffe6a8" stroke="#1e1408" stroke-width="3" paint-order="stroke">Muralha</text></g><rect x="110" y="300" width="60" height="50" fill="transparent"/></g>` });
+    layers.push({ y: 999, svg: `<g class="bld" data-act="open-building" data-b="wall">${badge(118, 360, v.buildings.wall, underConstruction.has('wall'))}<g class="lbl"><text x="118" y="338" text-anchor="middle" font-size="12" fill="#ffe6a8" stroke="#1e1408" stroke-width="3" paint-order="stroke">Muralha</text></g><rect x="88" y="330" width="60" height="50" fill="transparent"/></g>` });
   } else {
     layers.push({ y: 999, svg: `<g class="bld" data-act="open-building" data-b="wall"><text x="140" y="335" text-anchor="middle" font-size="11" fill="#fff" opacity=".7">+ Muralha</text><rect x="100" y="315" width="80" height="30" fill="transparent"/></g>` });
   }

@@ -2,6 +2,7 @@ import type { Village } from '../../engine/types';
 import { distance, fmtNum } from '../../engine/util';
 import { watchtowerRadius } from '../../data/tables';
 import { action, registerScreen, type UI } from '../app';
+import { buildingSpriteUrl } from '../buildingSprites';
 import { esc, num, unitsInline } from '../h';
 import { bonusName } from './village';
 
@@ -362,7 +363,37 @@ function drawTerrain(ctx: CanvasRenderingContext2D, ui: UI, W: number, H: number
 }
 
 /** Aldeia desenhada conforme os pontos: cabana, casas, aldeia murada, fortaleza. */
+const hqImages: HTMLImageElement[] = [];
+function hqImage(tier: number): HTMLImageElement | null {
+  if (!hqImages.length) {
+    for (let t = 1; t <= 4; t++) {
+      const url = buildingSpriteUrl('main', Math.round((t - 0.5) * 7.5), 30);
+      const im = new Image();
+      if (url) im.src = url;
+      hqImages.push(im);
+    }
+  }
+  const im = hqImages[tier - 1];
+  return im && im.complete && im.naturalWidth ? im : null;
+}
+
 function drawVillageSprite(ctx: CanvasRenderingContext2D, X: number, Y: number, z: number, points: number, owned: boolean, relColor: string) {
+  // Zoom aproximado: usa o sprite ilustrado do Edifício principal conforme o porte da aldeia.
+  if (z >= 24) {
+    const tier = points < 300 ? 1 : points < 1500 ? 2 : points < 5000 ? 3 : 4;
+    const im = hqImage(tier);
+    if (im) {
+      const w = z * 1.45, h = (w * im.naturalHeight) / im.naturalWidth;
+      ctx.save();
+      ctx.fillStyle = relColor; ctx.globalAlpha = 0.85;
+      ctx.beginPath(); ctx.ellipse(X, Y + z * 0.32, z * 0.62, z * 0.22, 0, 0, 7); ctx.fill();
+      ctx.globalAlpha = 1;
+      if (!owned) ctx.filter = 'grayscale(.75) brightness(.95)';
+      ctx.drawImage(im, X - w / 2, Y + z * 0.4 - h, w, h);
+      ctx.restore();
+      return;
+    }
+  }
   const tier = points < 300 ? 0 : points < 1000 ? 1 : points < 3500 ? 2 : points < 9000 ? 3 : 4;
   const u = z / 11; // unidade de desenho
   ctx.save();

@@ -163,3 +163,13 @@ tr.unread td { font-weight: bold; }
 .medal b { font-size: 22px; }
 .medal.t0 { opacity: .4; filter: grayscale(1); }
 .medal.t1 { border-color: #8b5a2b; } .medal.t2 { border-color: #cd7f32; } .medal.t3 { border-color: #aaa9ad; } .medal.t4 { border-color: #d4af37; }
+
+/* sprites dos edifícios nas telas */
+.bhead { display: flex; gap: 14px; align-items: center; }
+.bhead .grow { min-width: 0; }
+.bthumb { display: block; filter: drop-shadow(0 3px 3px rgba(0,0,0,.3)); }
+.bthumb.big { width: 170px; height: auto; flex: none; }
+.bthumb.small { width: 54px; height: auto; float: left; margin-right: 8px; }
+.bthumb.unbuilt { filter: grayscale(1) opacity(.45); }
+td.bcell { min-width: 190px; }
+@media (max-width: 600px) { .bthumb.big { width: 110px; } .bhead { align-items: flex-start; } }

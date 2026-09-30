@@ -7,17 +7,25 @@ import { MAX_BUILD_QUEUE } from '../../engine/game';
 import type { RecruitBuilding } from '../../engine/types';
 import { HOUR } from '../../engine/util';
 import { action, registerScreen, type UI } from '../app';
+import { buildingSpriteUrl } from '../buildingSprites';
 import { cd, costHtml, dur, esc, icon, num, uicon } from '../h';
 import { renderMarket } from './market';
 import { renderPlace } from './place';
+
+function thumb(ui: UI, b: BuildingId, lvl: number, size: 'big' | 'small'): string {
+  const url = buildingSpriteUrl(b, lvl, BUILDINGS[b].max, b === 'statue' && ui.g.human.knight.status === 'alive' ? 'ativo' : undefined);
+  if (!url) return '';
+  const built = ui.village().buildings[b] > 0;
+  return `<img class="bthumb ${size} ${built ? '' : 'unbuilt'}" src="${url}" alt="">`;
+}
 
 function header(ui: UI, b: BuildingId): string {
   const v = ui.village();
   const def = BUILDINGS[b];
   const lvl = v.buildings[b];
   return `<div class="box"><div class="head">${esc(def.name)} (nível ${lvl}) <span class="grow"></span><a data-act="nav" data-s="village">« Voltar à aldeia</a></div>
-    <div class="body"><p style="margin:0">${esc(def.desc)}</p>
-    ${lvl < def.max && b !== 'main' ? `<p class="small" style="margin:6px 0 0">${upgradeLine(ui, b)}</p>` : ''}</div></div>`;
+    <div class="body bhead">${thumb(ui, b, Math.max(1, lvl), 'big')}<div class="grow"><p style="margin:0">${esc(def.desc)}</p>
+    ${lvl < def.max && b !== 'main' ? `<p class="small" style="margin:6px 0 0">${upgradeLine(ui, b)}</p>` : ''}</div></div></div>`;
 }
 
 function upgradeLine(ui: UI, b: BuildingId): string {
@@ -57,7 +65,7 @@ function renderMain(ui: UI): string {
       action = `${costHtml(cost, v.res)} <span class="small">${icon('time')}${dur(g.buildTime(v, b, next))}</span> ` +
         (err ? `<span class="err small">${esc(err)}</span>` : `<button class="small green" data-act="build" data-b="${b}">Nível ${next}</button>`);
     }
-    return `<tr><td><a data-act="open-building" data-b="${b}">${def.name}</a><br><span class="small muted">Nível ${lvl}${planned !== lvl ? ` → ${planned}` : ''}</span></td><td>${action}</td></tr>`;
+    return `<tr><td class="bcell">${thumb(ui, b, Math.max(1, lvl), 'small')}<a data-act="open-building" data-b="${b}">${def.name}</a><br><span class="small muted">Nível ${lvl}${planned !== lvl ? ` → ${planned}` : ''}</span></td><td>${action}</td></tr>`;
   });
   const queue = v.buildQueue.map((q, i) => `<tr><td>${BUILDINGS[q.building].name}${q.demolish ? ' <span class="err">(demolir)</span>' : ''}</td><td class="num">${i === 0 ? cd(q.end) : dur(q.end - q.start)}</td><td class="small">${fmtAt(ui, q.end)}</td><td><button class="small red" data-act="cancel-build" data-i="${i}">Cancelar</button></td></tr>`);
   const canDemo = v.buildings.main >= 15;

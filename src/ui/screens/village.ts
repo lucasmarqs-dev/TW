@@ -39,7 +39,7 @@ registerScreen('village', {
     const mil = v.militia && v.militia.until > g.now ? v.militia.count : 0;
     const scene = list
       ? `<table class="vis"><tr><th>Edifício</th><th class="num">Nível</th><th></th></tr>${BUILDING_ORDER.filter((b) => g.buildingEnabled(b)).map((b) => `<tr><td><a data-act="open-building" data-b="${b}">${BUILDINGS[b].name}</a></td><td class="num">${v.buildings[b]}${building.has(b) ? ' ⚒' : ''}</td><td class="small muted">${esc(BUILDINGS[b].desc)}</td></tr>`).join('')}</table>`
-      : `<div class="scene-wrap">${villageScene(v, building, g.isNight(), !reducedMotion())}</div>`;
+      : `<div class="scene-wrap">${villageScene(v, building, g.isNight(), !reducedMotion(), g.player(v.ownerId))}</div>`;
     return `
     <div class="cols">
       <div>

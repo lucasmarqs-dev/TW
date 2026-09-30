@@ -37,4 +37,8 @@ Onde a referência marca uma fórmula como desconhecida (combate misto, dano est
 - `src/data/` — tabelas do jogo (`buildingTables.ts` é gerado do Apêndice A por `npm run gen:buildings`)
 - `src/engine/` — motor determinístico por eventos (sem DOM): `game.ts`, `combat.ts`, `bots.ts`, `world.ts`, `quests.ts`, `save.ts`
 - `src/ui/` — interface em TypeScript puro: cena SVG da aldeia, mapa em canvas e telas
+- `assets-src/sprites/classicos-v2-png/` — sprites originais dos edifícios (PNG em alta resolução)
+- `src/assets/sprites/` — versões WebP recortadas e reduzidas, embutidas no build; regenere com
+  `pip install pillow && python scripts/process_sprites.py` depois de trocar ou adicionar sprites
+  (nomes `edificio-tier-N.png` ou `edificio-unico.png`; o mapeamento fica em `src/ui/buildingSprites.ts`)
 - `tests/` — testes do motor com Vitest
