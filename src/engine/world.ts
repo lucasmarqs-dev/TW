@@ -109,15 +109,24 @@ export function newGame(cfgIn: WorldConfig): Game {
     st.tribes[id] = { id, name, tag, founderId: '', members: [], relations: {}, color: COLORS[(i * 5 + 3) % COLORS.length] };
     tribeIds.push(id);
   }
-  let ti = 0;
-  for (const p of shuffled) {
+  // Tribos são regionais: cada uma nasce em torno de um bot-semente e recruta os vizinhos mais próximos.
+  const home = (p: Player) => Object.values(st.villages).find((v) => v.ownerId === p.id)!;
+  const seeds = shuffled.slice(0, tribeIds.length);
+  seeds.forEach((p, i) => { const t = st.tribes[tribeIds[i]]; t.members.push(p.id); t.founderId = p.id; p.tribeId = t.id; });
+  const cap = Math.min(cfg.tribeMax, 8);
+  for (const p of shuffled.slice(tribeIds.length)) {
     if (R() < 0.3) continue; // alguns bots ficam sem tribo
-    const t = st.tribes[tribeIds[ti % tribeIds.length]];
-    if (t.members.length >= Math.min(cfg.tribeMax, 8)) { ti++; continue; }
-    t.members.push(p.id);
-    p.tribeId = t.id;
-    if (!t.founderId) t.founderId = p.id;
-    ti++;
+    const hv0 = home(p);
+    let best: string | null = null, bd = Infinity;
+    seeds.forEach((sp, i) => {
+      const t = st.tribes[tribeIds[i]];
+      if (t.members.length >= cap) return;
+      const d = Math.hypot(home(sp).x - hv0.x, home(sp).y - hv0.y);
+      if (d < bd) { bd = d; best = t.id; }
+    });
+    if (!best) continue;
+    st.tribes[best].members.push(p.id);
+    p.tribeId = best;
   }
   for (const id of tribeIds) if (!st.tribes[id].members.length) delete st.tribes[id];
   const tids = Object.keys(st.tribes);

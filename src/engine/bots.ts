@@ -34,6 +34,7 @@ const MIL_BUDGET: Record<Player['personality'], number> = {
 const RESEARCH_ORDER: UnitId[] = ['axe', 'spy', 'sword', 'light', 'ram', 'heavy', 'catapult', 'archer', 'marcher'];
 const OFF_UNITS: UnitId[] = ['axe', 'light', 'marcher', 'ram', 'catapult'];
 const DEF_UNITS: UnitId[] = ['spear', 'sword', 'archer', 'heavy'];
+const SUPPORT_SETS: UnitId[][] = [DEF_UNITS, ['spear', 'archer', 'heavy'], ['heavy']];
 
 export function installBots(g: Game) {
   g.hooks.botThink = think;
@@ -379,7 +380,7 @@ function onIncoming(g: Game, c: Command) {
   if (!target?.ownerId) return;
   const owner = g.s.players[target.ownerId];
   const isNoble = (c.units.snob ?? 0) > 0;
-  const big = unitCount(c.units) > 100;
+  const big = unitCount(c.units) > 60;
   if (!owner.human && owner.alive) {
     // O bot defensor aciona milícia quando o ataque chega logo
     if (big && g.cfg.militia && !target.militia && c.arrival - g.now < (4 * HOUR) / g.cfg.speed && g.rand() < 0.6) g.toggleMilitia(target.id);
@@ -403,14 +404,18 @@ export function requestTribeSupport(g: Game, target: Village, before: number, sh
     for (const v of g.villagesOf(mid)) {
       if (v.id === target.id) continue;
       g.update(v);
-      const u: Units = {};
-      for (const k of DEF_UNITS) {
-        const n = Math.floor((v.units[k] ?? 0) * share);
-        if (n > 0) u[k] = n;
+      // Tenta do grupo completo para o mais rápido até algum chegar antes do ataque.
+      for (const set of SUPPORT_SETS) {
+        const u: Units = {};
+        for (const k of set) {
+          const n = Math.floor((v.units[k] ?? 0) * share);
+          if (n > 0) u[k] = n;
+        }
+        if (unitCount(u) < 10) continue;
+        if (g.now + g.travelTime(v, target, u) > before) continue;
+        if (g.send(v.id, target.id, 'support', u) === null) sent += unitCount(u);
+        break;
       }
-      if (unitCount(u) < 20) continue;
-      if (g.now + g.travelTime(v, target, u) > before) continue;
-      if (g.send(v.id, target.id, 'support', u) === null) sent += unitCount(u);
     }
   }
   return sent;

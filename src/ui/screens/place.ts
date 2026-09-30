@@ -7,7 +7,7 @@ import { humanRequestSupport } from '../../engine/bots';
 import { action, type UI } from '../app';
 import { cd, costHtml, dur, esc, num, uicon, unitsInline } from '../h';
 
-const TABS: [string, string][] = [['', 'Comandos'], ['troops', 'Tropas'], ['sim', 'Simulador'], ['scav', 'Coleta']];
+const TABS: [string, string][] = [['', 'Comandos'], ['troops', 'Tropas'], ['farm', 'Assistente de saque'], ['sim', 'Simulador'], ['scav', 'Coleta']];
 
 export function renderPlace(ui: UI): string {
   const tabs = `<div class="tabs">${TABS.filter(([t]) => t !== 'scav' || ui.g.cfg.scavenging).map(([t, l]) => `<a class="${ui.tab === t ? 'active' : ''}" data-act="tab" data-t="${t}">${l}</a>`).join('')}</div>`;
@@ -15,6 +15,7 @@ export function renderPlace(ui: UI): string {
   if (ui.tab === 'troops') body = troopsTab(ui);
   else if (ui.tab === 'sim') body = simTab(ui);
   else if (ui.tab === 'scav') body = scavTab(ui);
+  else if (ui.tab === 'farm') body = farmTab(ui);
   else body = commandsTab(ui);
   return `<div class="box"><div class="body">${tabs}${body}</div></div>`;
 }
@@ -157,7 +158,49 @@ function scavTab(ui: UI): string {
     <table class="vis">${rows.join('')}</table>`;
 }
 
+// ---------------------------------------------------------------- assistente de saque
+const TEMPLATE_KEY = 'tw-offline-farm-templates';
+function loadTemplates(): { a: Units; b: Units } {
+  try { return JSON.parse(localStorage.getItem(TEMPLATE_KEY) || '') as { a: Units; b: Units }; } catch { return { a: { light: 5 }, b: { axe: 20, spy: 1 } }; }
+}
+function farmTab(ui: UI): string {
+  const g = ui.g, v = ui.village();
+  g.update(v);
+  const tpl = loadTemplates();
+  const list = UNIT_ORDER.filter((u) => g.unitEnabled(u) && u !== 'snob' && u !== 'knight');
+  const tplRow = (key: 'a' | 'b') => `<tr><td><b>${key.toUpperCase()}</b></td>${list.map((u) => `<td><input class="unit-in" type="number" min="0" name="ft${key}_${u}" value="${tpl[key][u] ?? ''}"></td>`).join('')}<td class="num">${num(unitsCarry(tpl[key]))}</td></tr>`;
+  const targets = Object.values(g.s.villages)
+    .filter((x) => !x.ownerId && x.id !== v.id)
+    .map((x) => ({ x, d: distance(v, x) }))
+    .sort((a, b) => a.d - b.d)
+    .slice(0, 40);
+  const rows = targets.map(({ x, d }) => {
+    const rep = g.s.reports.find((r) => r.defender?.villageId === x.id && r.attacker?.playerId === g.s.humanId);
+    const loot = rep?.loot ? rep.loot.wood + rep.loot.stone + rep.loot.iron : null;
+    const full = rep?.loot && rep.lootCap && loot! >= rep.lootCap;
+    const onWay = Object.values(g.s.commands).filter((c) => c.ownerId === g.s.humanId && c.type === 'attack' && c.toId === x.id).length;
+    return `<tr><td>${rep ? `<span class="dot ${rep.color}"></span>` : ''}${esc(x.name)} (${x.x}|${x.y})${x.bonus ? ' ★' : ''}</td><td class="num">${d.toFixed(1)}</td><td class="num">${num(x.points)}</td>
+      <td class="small">${rep ? `${loot !== null ? `${num(loot)}${full ? ' <b title="carga cheia">⬆</b>' : ''}` : '—'} · muralha ${rep.wallAfter ?? '?'}` : '<span class="muted">sem relatório</span>'}</td>
+      <td>${onWay ? `<span class="small">${onWay} a caminho</span> ` : ''}<button class="small" data-act="farm-send" data-k="a" data-v="${x.id}">A</button> <button class="small" data-act="farm-send" data-k="b" data-v="${x.id}">B</button>${rep ? ` <a class="small" data-act="open-report" data-r="${rep.id}">relatório</a>` : ''}</td></tr>`;
+  });
+  return `<div data-form><table class="vis" style="width:auto"><tr><th>Modelo</th>${list.map((u) => `<th style="text-align:center">${uicon(u)}</th>`).join('')}<th>Carga</th></tr>${tplRow('a')}${tplRow('b')}</table>
+    <p><button class="small" data-act="farm-save" data-default>Salvar modelos</button> <span class="small muted">Em casa: ${unitsInline(v.units)}</span></p></div>
+    <table class="vis"><tr><th>Aldeia bárbara</th><th class="num">Dist.</th><th class="num">Pontos</th><th>Último saque</th><th></th></tr>${rows.join('')}</table>
+    <p class="small muted">Verde: vitória sem perdas · amarelo: com perdas · vermelho: derrota. ⬆ indica que a carga voltou cheia (mande mais tropas).</p>`;
+}
+
 // ---------------------------------------------------------------- ações
+action('farm-save', (ui) => {
+  const t = { a: readUnits('fta_'), b: readUnits('ftb_') };
+  try { localStorage.setItem(TEMPLATE_KEY, JSON.stringify(t)); } catch { /* ignore */ }
+  ui.result(null, 'Modelos salvos.');
+});
+action('farm-send', (ui, el) => {
+  const tpl = loadTemplates()[el.dataset.k as 'a' | 'b'];
+  if (!unitCount(tpl)) return ui.result('Modelo vazio.');
+  const t = ui.g.s.villages[el.dataset.v!];
+  ui.result(ui.g.send(ui.vid, t.id, 'attack', tpl), `Saque enviado para ${t.name} (${t.x}|${t.y}).`);
+});
 action('tab', (ui, el) => { ui.tab = el.dataset.t ?? ''; ui.pendingSend = null; ui.flash = null; ui.render(); });
 action('fill-all', (ui) => {
   const v = ui.village();

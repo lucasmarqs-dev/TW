@@ -64,3 +64,37 @@ describe('simulação com bots', () => {
     }
   });
 });
+
+describe('nobres e conquista', () => {
+  it('ataque vencedor com nobre reduz lealdade e conquista em ≤ 0', () => {
+    const g = newGame({ ...DEFAULT_CONFIG, seed: 7, bots: 5 });
+    const home = g.villagesOf('p0')[0];
+    const barb = Object.values(g.s.villages).filter((v) => !v.ownerId).sort((a, b) => Math.hypot(a.x - home.x, a.y - home.y) - Math.hypot(b.x - home.x, b.y - home.y))[0];
+    home.units = { axe: 500, snob: 2 };
+    barb.units = {};
+    barb.loyalty = 1;
+    barb.loyaltyTime = g.now;
+    expect(g.send(home.id, barb.id, 'attack', { axe: 200, snob: 1 })).toBeNull();
+    g.advance(DAY);
+    expect(barb.ownerId).toBe('p0');
+    expect(Math.round(barb.loyalty)).toBeGreaterThanOrEqual(25);
+    expect(barb.units.axe).toBeGreaterThan(0);
+    expect(barb.units.snob ?? 0).toBe(0);
+    expect(g.human.conquered).toBe(1);
+  });
+  it('posições de nobre seguem 1+2+3… moedas', () => {
+    const g = newGame({ ...DEFAULT_CONFIG, seed: 8, bots: 3 });
+    g.human.coins = 6;
+    expect(g.nobleSlots('p0').total).toBe(3);
+    g.human.coins = 5;
+    expect(g.nobleSlots('p0').total).toBe(2);
+    expect(g.nobleSlots('p0').nextCoins).toBe(1);
+  });
+  it('proteção de iniciante bloqueia ataques entre jogadores', () => {
+    const g = newGame({ ...DEFAULT_CONFIG, seed: 9, bots: 3 });
+    const home = g.villagesOf('p0')[0];
+    const bot = g.villagesOf('p1')[0];
+    home.units = { axe: 10 };
+    expect(g.send(home.id, bot.id, 'attack', { axe: 10 })).toMatch(/Proteção/);
+  });
+});

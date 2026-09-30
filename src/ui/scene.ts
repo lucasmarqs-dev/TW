@@ -105,7 +105,7 @@ const POS: Record<BuildingId, { x: number; y: number }> = {
   statue: { x: 475, y: 385 },
   market: { x: 470, y: 290 },
   storage: { x: 415, y: 215 },
-  hide: { x: 455, y: 140 },
+  hide: { x: 470, y: 132 },
   farm: { x: 860, y: 120 },
   wood: { x: 860, y: 560 },
   stone: { x: 130, y: 555 },
@@ -283,6 +283,7 @@ export function villageScene(v: Village, underConstruction: Set<string>): string
   const layers: { y: number; svg: string }[] = trees.map(([x, y, sz]) => ({ y, svg: tree(x, y, sz, rnd() < 0.5) }));
   layers.push({ y: 1, svg: wallRing(v.buildings.wall) });
   const ids = Object.keys(POS) as BuildingId[];
+  const badges: string[] = [];
   for (const id of ids) {
     if (id === 'wall' || id === 'church_f') continue;
     let lvl = v.buildings[id];
@@ -295,10 +296,10 @@ export function villageScene(v: Village, underConstruction: Set<string>): string
     const inner = lvl > 0 ? drawBuilding(id, lvl, v) : `<ellipse cx="${p.x}" cy="${p.y}" rx="26" ry="11" fill="rgba(90,60,20,.25)" stroke="rgba(60,40,10,.5)" stroke-dasharray="4 3"/>`;
     const building = underConstruction.has(id);
     const lblY = p.y - (id === 'main' ? 110 : 70);
+    if (lvl > 0 || building) badges.push(`<g class="bld" data-act="open-building" data-b="${target}">${badge(p.x + (id === 'farm' ? -50 : 0), p.y + 22, lvl, building)}</g>`);
     layers.push({
       y: p.y,
       svg: `<g class="bld" data-act="open-building" data-b="${target}"><g class="shape">${inner}</g>` +
-        (lvl > 0 || building ? badge(p.x + (id === 'farm' ? -50 : 0), p.y + 22, lvl, building) : '') +
         `<g class="lbl"><rect x="${p.x - label.length * 3.8 - 6}" y="${lblY - 13}" width="${label.length * 7.6 + 12}" height="19" rx="4" fill="rgba(30,20,8,.85)"/><text x="${p.x}" y="${lblY + 1}" text-anchor="middle" font-size="12" fill="#ffe6a8">${label}${lvl ? ' (' + lvl + ')' : ''}</text></g>` +
         `<rect x="${p.x - 55}" y="${p.y - 70}" width="110" height="90" fill="transparent"/></g>`,
     });
@@ -311,6 +312,8 @@ export function villageScene(v: Village, underConstruction: Set<string>): string
   }
   layers.sort((a, b) => a.y - b.y);
   for (const l of layers) s += l.svg;
+  // Selos de nível sempre por cima de árvores e telhados
+  s += badges.join('');
   s += `</svg>`;
   return s;
 }
