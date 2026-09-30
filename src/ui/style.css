@@ -106,7 +106,8 @@ table.vis td.num, table.vis th.num { text-align: right; font-variant-numeric: ta
 .cost .res { font-weight: normal; }
 .cost .res.lack { color: var(--red); font-weight: bold; }
 .icon { width: 16px; height: 16px; vertical-align: -3px; }
-.uicon { display: inline-block; width: 20px; text-align: center; }
+.uicon { display: inline-block; width: 20px; text-align: center; vertical-align: -4px; }
+.usvg { display: inline-block; filter: drop-shadow(0 1px 0 rgba(255,255,255,.35)); }
 .bar { height: 8px; background: #d9c79a; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
 .bar > i { display: block; height: 100%; background: linear-gradient(90deg, #6fae44, #3c7a24); }
 .bar.red > i { background: linear-gradient(90deg, #e07b4c, #b0301d); }

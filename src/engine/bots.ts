@@ -452,7 +452,7 @@ function hourly(g: Game) {
     }
   }
   // Convites e declarações envolvendo o jogador humano
-  const pendingInvite = g.s.messages.some((m) => m.action?.kind === 'tribeInvite' && !m.action.done && g.now - m.time < (3 * DAY) / g.cfg.speed);
+  const pendingInvite = g.s.messages.some((m) => m.action?.kind === 'tribeInvite' && !m.action.done && g.now - m.time < (6 * DAY) / g.cfg.speed);
   if (!human.tribeId && day > 1 && !pendingInvite && g.rand() < 0.03) {
     const t = tribes.filter((x) => x.members.length < g.cfg.tribeMax && x.members.length > 0)[Math.floor(g.rand() * tribes.length)];
     if (t) {

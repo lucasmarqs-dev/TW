@@ -5,6 +5,8 @@ import { BUILDINGS, type BuildingId } from '../data/buildings';
 import type { Village } from '../engine/types';
 
 const W = 1000, H = 640;
+let NIGHT = false;
+const win = () => (NIGHT ? '#ffd35a' : '#2d2415');
 const CX = 490, CY = 330;
 
 type Style = { wall: string; roof: string; roof2: string; timber: boolean };
@@ -33,6 +35,9 @@ function house(x: number, y: number, w: number, h: number, st: Style, opts: { d?
   s += `<polygon points="${R},${T} ${R + d},${T - d / 2} ${R + d / 2},${ridgeY}" fill="${shade(st.wall, -18)}" stroke="#3b2a14" stroke-width=".8"/>`;
   // frente
   s += `<rect x="${L}" y="${T}" width="${w}" height="${h}" fill="${st.wall}" stroke="#3b2a14" stroke-width=".8"/>`;
+  if (!st.timber) s += `<rect x="${L}" y="${T}" width="${w}" height="${h}" fill="url(#p-stone)"/>`;
+  s += `<rect x="${L}" y="${T}" width="${w}" height="${h}" fill="url(#g-wall)"/>`;
+  s += `<polygon points="${R},${y} ${R + d},${y - d / 2} ${R + d},${T - d / 2} ${R},${T}" fill="url(#${st.timber ? 'p-plank' : 'p-stone'})" opacity=".7"/>`;
   if (st.timber) {
     s += `<path d="M${L} ${T + h * 0.45} H${R} M${L + w * 0.33} ${T} V${y} M${L + w * 0.66} ${T} V${y} M${L} ${T} L${L + w * 0.33} ${T + h * 0.45} M${R} ${T} L${L + w * 0.66} ${T + h * 0.45}" stroke="#5a3a1a" stroke-width="1.6" fill="none"/>`;
   } else {
@@ -41,11 +46,15 @@ function house(x: number, y: number, w: number, h: number, st: Style, opts: { d?
   const nw = opts.windows ?? 2;
   for (let i = 0; i < nw; i++) {
     const wx = L + (w * (i + 1)) / (nw + 1) - 3;
-    s += `<rect x="${wx}" y="${T + h * 0.15}" width="6" height="6" fill="#2d2415" stroke="#e8d7a8" stroke-width=".6"/>`;
+    s += `<rect x="${wx}" y="${T + h * 0.15}" width="6" height="7" fill="${win()}" stroke="#e8d7a8" stroke-width=".6"/><path d="M${wx + 3} ${T + h * 0.15} v7 M${wx} ${T + h * 0.15 + 3.5} h6" stroke="#5a3a1a" stroke-width=".6"/>`;
+    if (NIGHT) s += `<circle cx="${wx + 3}" cy="${T + h * 0.15 + 3}" r="9" fill="url(#g-glow)"/>`;
   }
   if (opts.door !== false) s += `<rect x="${x - 5}" y="${y - h * 0.5}" width="10" height="${h * 0.5}" fill="#4a2e14" rx="2"/>`;
   // telhado (água frontal)
-  s += `<polygon points="${L - 4},${T + 1} ${R + 4},${T + 1} ${R + 4 + d / 2},${ridgeY} ${L - 4 + d / 2},${ridgeY}" fill="${st.roof}" stroke="#3b2a14" stroke-width=".8"/>`;
+  const roofPts = `${L - 4},${T + 1} ${R + 4},${T + 1} ${R + 4 + d / 2},${ridgeY} ${L - 4 + d / 2},${ridgeY}`;
+  s += `<polygon points="${roofPts}" fill="${st.roof}" stroke="#3b2a14" stroke-width=".8"/>`;
+  s += `<polygon points="${roofPts}" fill="url(#${st.roof === '#c9a44e' ? 'p-thatch' : 'p-tile'})"/><polygon points="${roofPts}" fill="url(#g-roof)"/>`;
+  s += `<path d="M${L - 4 + d / 2} ${ridgeY} H${R + 4 + d / 2}" stroke="${shade(st.roof2, -20)}" stroke-width="2.2" stroke-linecap="round"/>`;
   // água traseira visível
   s += `<polygon points="${R + 4 + d / 2},${ridgeY} ${R + d + 4},${T - d / 2 + 1} ${R + d / 2 + 4},${T - d / 2 - 2} " fill="${st.roof2}" stroke="#3b2a14" stroke-width=".5"/>`;
   for (let i = 1; i < 4; i++) {
@@ -58,7 +67,8 @@ function house(x: number, y: number, w: number, h: number, st: Style, opts: { d?
 function tower(x: number, y: number, r: number, h: number, color = '#9d9a92', roof?: string): string {
   let s = `<ellipse cx="${x + 4}" cy="${y + 2}" rx="${r + 5}" ry="${r * 0.45 + 3}" fill="rgba(0,0,0,.22)"/>`;
   s += `<path d="M${x - r} ${y} V${y - h} A${r} ${r * 0.4} 0 0 0 ${x + r} ${y - h} V${y} A${r} ${r * 0.4} 0 0 1 ${x - r} ${y}Z" fill="${color}" stroke="#3b2a14" stroke-width=".8"/>`;
-  s += `<path d="M${x - r * 0.35} ${y - h} V${y}" stroke="rgba(255,255,255,.18)" stroke-width="${r * 0.4}"/>`;
+  s += `<rect x="${x - r}" y="${y - h}" width="${2 * r}" height="${h}" fill="url(#p-stone)" opacity=".8"/><rect x="${x - r}" y="${y - h}" width="${2 * r}" height="${h}" fill="url(#g-tower)"/>`;
+  if (h > 40) s += `<rect x="${x - 2.5}" y="${y - h * 0.7}" width="5" height="9" rx="2.5" fill="${win()}" stroke="#3b2a14" stroke-width=".6"/>`;
   s += `<ellipse cx="${x}" cy="${y - h}" rx="${r}" ry="${r * 0.4}" fill="${shade(color, 12)}" stroke="#3b2a14" stroke-width=".8"/>`;
   if (roof) {
     s += `<polygon points="${x - r - 2},${y - h} ${x + r + 2},${y - h} ${x},${y - h - r * 2.2}" fill="${roof}" stroke="#3b2a14" stroke-width=".8"/>`;
@@ -68,12 +78,26 @@ function tower(x: number, y: number, r: number, h: number, color = '#9d9a92', ro
   return s;
 }
 
-function tree(x: number, y: number, s: number, dark = false): string {
-  const c1 = dark ? '#2f5320' : '#3d6b27', c2 = dark ? '#24421a' : '#2f5a1e';
-  return `<ellipse cx="${x + 3}" cy="${y + 2}" rx="${s * 0.8}" ry="${s * 0.3}" fill="rgba(0,0,0,.25)"/>` +
-    `<rect x="${x - 1.5}" y="${y - s * 0.6}" width="3" height="${s * 0.6}" fill="#5a3a1a"/>` +
-    `<polygon points="${x},${y - s * 2.1} ${x - s * 0.8},${y - s * 0.5} ${x + s * 0.8},${y - s * 0.5}" fill="${c1}"/>` +
-    `<polygon points="${x},${y - s * 2.4} ${x - s * 0.6},${y - s * 1.2} ${x + s * 0.6},${y - s * 1.2}" fill="${c2}"/>`;
+function tree(x: number, y: number, s: number, kind: number): string {
+  const shadow = `<ellipse cx="${x + s * 0.4}" cy="${y + 2}" rx="${s * 1.1}" ry="${s * 0.35}" fill="rgba(0,0,0,.25)"/>`;
+  if (kind < 0.55) {
+    // pinheiro em camadas
+    const c = kind < 0.28 ? ['#2c5a22', '#356b28', '#3f7a2e'] : ['#244a1c', '#2d5a22', '#376a29'];
+    let p = shadow + `<rect x="${x - 1.5}" y="${y - s * 0.7}" width="3" height="${s * 0.7}" fill="#5a3a1a"/>`;
+    for (let i = 0; i < 3; i++) {
+      const top = y - s * (1.3 + i * 0.55), base = y - s * (0.45 + i * 0.5), hw = s * (0.95 - i * 0.22);
+      p += `<polygon points="${x},${top - s * 0.25} ${x - hw},${base} ${x + hw},${base}" fill="${c[i]}" stroke="#1d3a14" stroke-width=".6"/>`;
+      p += `<polygon points="${x},${top - s * 0.25} ${x - hw * 0.15},${base} ${x - hw},${base}" fill="rgba(255,255,255,.08)"/>`;
+    }
+    return p;
+  }
+  // árvore frondosa
+  const c = kind < 0.8 ? '#4f8a30' : '#5e9636';
+  let p = shadow + `<path d="M${x - 1.8} ${y} L${x - 1} ${y - s * 0.9} L${x + 1} ${y - s * 0.9} L${x + 1.8} ${y}Z" fill="#5a3a1a"/>`;
+  const blobs: [number, number, number][] = [[0, -1.35, 0.8], [-0.55, -1.0, 0.6], [0.55, -1.05, 0.62], [0.1, -1.8, 0.55]];
+  for (const [dx, dy, r] of blobs) p += `<circle cx="${x + dx * s}" cy="${y + dy * s}" r="${r * s}" fill="${c}" stroke="#2d5a1c" stroke-width=".6"/>`;
+  p += `<circle cx="${x}" cy="${y - 1.35 * s}" r="${1.15 * s}" fill="url(#g-crown)"/>`;
+  return p;
 }
 
 function shade(hex: string, amt: number): string {
@@ -248,25 +272,33 @@ const PATHS: [number, number, number, number][] = [
   [CX, CY, 740, 290], [CX, CY, 700, 410], [CX, CY, 140, 110], [CX, CY, 860, 140], [CX, CY, 860, 565], [CX, CY, 130, 560],
 ];
 
-export function villageScene(v: Village, underConstruction: Set<string>): string {
+export function villageScene(v: Village, underConstruction: Set<string>, night = false, motion = true): string {
+  NIGHT = night;
   let s = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" font-family="Verdana">`;
   s += `<defs><radialGradient id="grass" cx="50%" cy="50%" r="70%"><stop offset="0" stop-color="#7fae48"/><stop offset="1" stop-color="#557f2c"/></radialGradient>` +
     `<radialGradient id="sand" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#e7cf98"/><stop offset="1" stop-color="#cfb176"/></radialGradient></defs>`;
   s += `<rect width="${W}" height="${H}" fill="url(#grass)"/>`;
-  // manchas de grama
+  s += `<rect width="${W}" height="${H}" filter="url(#f-patches)" opacity=".55"/><rect width="${W}" height="${H}" filter="url(#f-grass)"/>`;
   const rnd = mulberry(hash(v.id));
-  for (let i = 0; i < 40; i++) s += `<ellipse cx="${rnd() * W}" cy="${rnd() * H}" rx="${20 + rnd() * 50}" ry="${8 + rnd() * 20}" fill="${rnd() < 0.5 ? '#6f9e3c' : '#8cbc52'}" opacity=".35"/>`;
+  // flores e tufos
+  for (let i = 0; i < 70; i++) {
+    const fx = rnd() * W, fy = rnd() * H;
+    const col = ['#f4e37a', '#ffffff', '#e98bb0', '#b9d86a'][Math.floor(rnd() * 4)];
+    s += `<circle cx="${fx}" cy="${fy}" r="${1 + rnd() * 1.3}" fill="${col}" opacity=".8"/>`;
+  }
+  // lago
+  s += `<ellipse cx="930" cy="330" rx="70" ry="34" fill="#3d6e8f" stroke="#6b8a4a" stroke-width="5"/><ellipse cx="925" cy="324" rx="52" ry="20" fill="#5b8fb0"/><path d="M890 322 q10 -4 20 0 M935 316 q10 -4 20 0" stroke="#cfe6f2" stroke-width="1.2" fill="none" opacity=".7"/>`;
   // rochas da montanha (topo)
   s += `<path d="M0 0 H330 Q300 40 250 50 Q200 80 150 70 Q90 100 40 90 Q10 110 0 130Z" fill="#9f9c94" opacity=".9"/>`;
   s += `<path d="M560 0 H760 Q740 30 690 28 Q640 40 600 25Z" fill="#a7a49c" opacity=".7"/>`;
   // caminhos
   for (const [x1, y1, x2, y2] of PATHS) {
     const mx = (x1 + x2) / 2 + (y2 - y1) * 0.12, my = (y1 + y2) / 2 - (x2 - x1) * 0.08;
-    s += `<path d="M${x1} ${y1} Q${mx} ${my} ${x2} ${y2}" stroke="#c9ab6f" stroke-width="18" fill="none" stroke-linecap="round" opacity=".95"/>`;
+    s += `<path d="M${x1} ${y1} Q${mx} ${my} ${x2} ${y2}" stroke="#a88a52" stroke-width="21" fill="none" stroke-linecap="round" opacity=".5"/><path d="M${x1} ${y1} Q${mx} ${my} ${x2} ${y2}" stroke="#cdb077" stroke-width="17" fill="none" stroke-linecap="round"/>`;
   }
   s += `<path d="M${W} 0 Q900 20 860 90" stroke="#c9ab6f" stroke-width="14" fill="none"/><path d="M${W} ${H - 40} Q940 600 860 565" stroke="#c9ab6f" stroke-width="14" fill="none"/><path d="M0 ${H - 20} Q60 620 130 560" stroke="#c9ab6f" stroke-width="14" fill="none"/>`;
   // praça
-  s += `<ellipse cx="${CX}" cy="${CY + 20}" rx="185" ry="115" fill="url(#sand)"/>`;
+  s += `<ellipse cx="${CX}" cy="${CY + 22}" rx="190" ry="119" fill="#b39564" opacity=".6"/><ellipse cx="${CX}" cy="${CY + 20}" rx="185" ry="115" fill="url(#sand)"/><ellipse cx="${CX}" cy="${CY + 20}" rx="185" ry="115" filter="url(#f-dirt)" opacity=".6"/>`;
   // poço se não houver estátua
   if (!v.buildings.statue) s += `<ellipse cx="475" cy="385" rx="18" ry="8" fill="#6b6259" stroke="#3b2a14"/><ellipse cx="475" cy="383" rx="12" ry="5" fill="#2a3b4f"/>`;
   // árvores externas
@@ -276,11 +308,12 @@ export function villageScene(v: Village, underConstruction: Set<string>): string
     const r = 1.08 + rnd() * 0.35;
     const x = CX + Math.cos(a) * 380 * r, y = CY + Math.sin(a) * 270 * r;
     if (x < 10 || x > W - 10 || y < 20 || y > H - 5) continue;
+    if (Math.hypot((x - 930) / 80, (y - 330) / 44) < 1) continue; // lago
     trees.push([x, y, 9 + rnd() * 8]);
   }
   trees.sort((a, b) => a[1] - b[1]);
   // Desenho ordenado por profundidade
-  const layers: { y: number; svg: string }[] = trees.map(([x, y, sz]) => ({ y, svg: tree(x, y, sz, rnd() < 0.5) }));
+  const layers: { y: number; svg: string }[] = trees.map(([x, y, sz]) => ({ y, svg: tree(x, y, sz, rnd()) }));
   layers.push({ y: 1, svg: wallRing(v.buildings.wall) });
   const ids = Object.keys(POS) as BuildingId[];
   const badges: string[] = [];
@@ -312,6 +345,8 @@ export function villageScene(v: Village, underConstruction: Set<string>): string
   }
   layers.sort((a, b) => a.y - b.y);
   for (const l of layers) s += l.svg;
+  s += ambient(v, motion);
+  if (night) s += `<rect width="${W}" height="${H}" fill="#0b1a3a" opacity=".42" style="mix-blend-mode:multiply" pointer-events="none"/>` + nightLights(v);
   // Selos de nível sempre por cima de árvores e telhados
   s += badges.join('');
   s += `</svg>`;
@@ -330,4 +365,37 @@ function mulberry(a: number) {
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
+}
+
+/** Fumaça das chaminés, bandeiras e aldeões andando pelos caminhos. */
+function ambient(v: Village, motion: boolean): string {
+  let s = '';
+  const smoke = (x: number, y: number, delay: number) => motion
+    ? [0, 1, 2].map((i) => `<circle cx="${x}" cy="${y}" r="3" fill="#dcdcdc" opacity="0"><animate attributeName="cy" from="${y}" to="${y - 40}" dur="4s" begin="${delay + i * 1.3}s" repeatCount="indefinite"/><animate attributeName="r" from="2.5" to="9" dur="4s" begin="${delay + i * 1.3}s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;.55;0" dur="4s" begin="${delay + i * 1.3}s" repeatCount="indefinite"/></circle>`).join('')
+    : '';
+  if (v.buildings.smith > 0) s += smoke(460 + Math.min(12, v.buildings.smith) * 0, 438 - 4 * Math.min(3, Math.ceil(v.buildings.smith / 7)), 0);
+  if (v.buildings.main > 0) s += smoke(560, 150, 1.1);
+  if (v.buildings.farm > 0) s += smoke(820, 60, 2.2);
+  if (!motion) return s;
+  // Aldeões: quantidade cresce com a população
+  const n = Math.min(10, 2 + Math.floor(v.points / 250));
+  const colors = ['#2f5f9e', '#8e3c1d', '#556b2f', '#7a5226', '#6c3483', '#b0301d'];
+  for (let i = 0; i < n; i++) {
+    const [x1, y1, x2, y2] = PATHS[i % PATHS.length];
+    const mx = (x1 + x2) / 2 + (y2 - y1) * 0.12, my = (y1 + y2) / 2 - (x2 - x1) * 0.08;
+    const path = `M${x1} ${y1 + 10} Q${mx} ${my + 10} ${x2} ${y2 + 10}`;
+    const dur = 18 + ((i * 7) % 14);
+    s += `<g><circle r="2.8" cy="-11" fill="#e0b48a"/><rect x="-2.6" y="-8.5" width="5.2" height="8.5" rx="1.5" fill="${colors[i % colors.length]}"/>` +
+      `<animateMotion dur="${dur}s" begin="-${i * 3}s" repeatCount="indefinite" path="${path}" keyPoints="0;1;0" keyTimes="0;.5;1" calcMode="linear"/></g>`;
+  }
+  return s;
+}
+
+function nightLights(v: Village): string {
+  // Tochas na praça e no portão
+  let s = '';
+  const torches: [number, number][] = [[400, 300], [590, 300], [420, 420], [570, 420]];
+  if (v.buildings.wall > 0) torches.push([CX - 350, CY + 60], [CX + 352, CY + 60]);
+  for (const [x, y] of torches) s += `<circle cx="${x}" cy="${y}" r="26" fill="url(#g-glow)"/><rect x="${x - 1}" y="${y}" width="2" height="12" fill="#3b2a14"/><circle cx="${x}" cy="${y - 1}" r="2.5" fill="#ffd35a"/>`;
+  return s;
 }

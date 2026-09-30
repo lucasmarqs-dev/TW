@@ -2,6 +2,7 @@
 import { UNITS, type UnitId, type Units } from '../data/units';
 import type { Res } from '../engine/types';
 import { fmtDuration, fmtNum } from '../engine/util';
+import { unitSvg } from './sprites';
 
 export function esc(s: string | number | null | undefined): string {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
@@ -18,13 +19,9 @@ const ICONS: Record<string, string> = {
 };
 export function icon(name: string): string { return ICONS[name] ?? ''; }
 
-export const UNIT_ICON: Record<UnitId | 'militia', string> = {
-  spear: '🔱', sword: '⚔️', axe: '🪓', archer: '🏹', spy: '👁️', light: '🐎', marcher: '🏇', heavy: '🛡️',
-  ram: '🐏', catapult: '☄️', knight: '🤴', snob: '👑', militia: '🧑‍🌾',
-};
 export function uicon(u: UnitId | 'militia'): string {
   const name = u === 'militia' ? 'Milícia' : UNITS[u].name;
-  return `<span class="uicon" title="${esc(name)}">${UNIT_ICON[u]}</span>`;
+  return `<span class="uicon" title="${esc(name)}">${unitSvg(u)}</span>`;
 }
 
 export function num(n: number): string { return fmtNum(n); }

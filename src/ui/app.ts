@@ -7,6 +7,7 @@ import { checkAchievements, checkQuests } from '../engine/quests';
 import { saveGame } from '../engine/save';
 import { fmtDuration, fmtGameTime } from '../engine/util';
 import { esc, icon, num } from './h';
+import { SHARED_DEFS } from './sprites';
 
 export type Screen = 'village' | 'building' | 'map' | 'reports' | 'messages' | 'ranking' | 'tribe' | 'settings' | 'overview' | 'quests';
 
@@ -110,7 +111,7 @@ export function startApp(g: Game, root: HTMLElement) {
   };
   (window as unknown as { ui: UI }).ui = ui;
 
-  root.innerHTML = `<div id="topbar"></div><div id="main"></div><div id="toasts"></div>`;
+  root.innerHTML = `${SHARED_DEFS}<div id="topbar"></div><div id="main"></div><div id="toasts"></div>`;
   const top = root.querySelector('#topbar') as HTMLElement;
   const main = root.querySelector('#main') as HTMLElement;
 
